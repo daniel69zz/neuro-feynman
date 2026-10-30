@@ -198,8 +198,7 @@ export default function App() {
           <Transferencia
             sesion={sesion}
             ocupado={ocupado}
-            onEnviar={(r) => ejecutar(() => api.transferencia(id, r))}
-            onReintentar={() => reintentar("transferencia")}
+            onElegir={(o) => ejecutar(() => api.transferencia(id, o))}
             onResultado={() => setPantalla("resultado")}
           />
         )}

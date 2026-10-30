@@ -1,7 +1,8 @@
 """Prompts de las tres etapas. Van en el mensaje de usuario (Gemma no respeta bien system instructions).
 
-Las etapas están separadas a propósito: la respuesta esperada de la pregunta de transferencia
-se genera en la etapa 2, se guarda solo en el servidor y nunca se envía al frontend antes del intento.
+La pregunta de aplicación es de opción múltiple y se genera en la etapa 2: cuál es la correcta y la
+explicación de cada opción se guardan solo en el servidor y no se envían antes del intento. La corrección
+la hace el backend comparando la opción elegida, sin otra llamada al modelo.
 """
 
 import json
@@ -73,11 +74,15 @@ Para CADA concepto devuelve:
 - feedback: justificación corta (1-2 frases) citando qué falta o qué está bien.
 - corrective_question: si NO es "demostrado", una pregunta breve que lo ayude a recuperar ese concepto sin darle la respuesta; null si es "demostrado".
 
-Además genera UNA pregunta de transferencia:
+Además genera UNA pregunta de aplicación de opción múltiple:
 - transfer_question: situación NUEVA y concreta que obligue a aplicar un mecanismo o relación del material
   (no a repetir una definición). Prioriza los conceptos no demostrados. No incluyas pistas de la respuesta.
 - target_concept_ids: ids de los conceptos que pone a prueba.
-- expected_points: 2 a 4 puntos que una buena respuesta debe contener (esto NO se mostrará al estudiante antes de responder).
+- options: exactamente 4 opciones y UNA sola correcta (correct: true).
+  - Las incorrectas deben ser plausibles: errores típicos o confusiones reales entre conceptos del material, no absurdas.
+  - Todas con longitud y estilo parecidos, para que la correcta no destaque. Sin "todas las anteriores" ni "ninguna".
+  - explanation: 1-2 frases sobre por qué la opción es correcta o en qué falla, apoyadas en el material
+    (no se mostrará al estudiante antes de responder).
 - uncertainty: si no puedes evaluar algo con confianza (explicación muy breve, material ambiguo), dilo; si no, "".
 
 Esquema:
@@ -87,47 +92,7 @@ Esquema:
   ],
   "transfer_question": "...",
   "target_concept_ids": ["..."],
-  "expected_points": [{{"id": "p1", "text": "..."}}],
+  "options": [{{"text": "...", "correct": false, "explanation": "..."}}],
   "uncertainty": ""
 }}"""
 
-
-def transferencia(topic: str, conceptos: list[dict], pregunta: str, puntos: list[dict], respuesta: str) -> str:
-    material = json.dumps(
-        [{k: c[k] for k in ("id", "title", "source_evidence")} for c in conceptos], ensure_ascii=False, indent=1
-    )
-    esperados = json.dumps(puntos, ensure_ascii=False, indent=1)
-    return f"""{BASE}
-
-TAREA: evalúa la respuesta del estudiante a una pregunta de transferencia, punto por punto.
-
-TEMA: {topic}
-
-MATERIAL DE REFERENCIA:
-{material}
-
-PREGUNTA: {pregunta}
-
-PUNTOS ESPERADOS:
-{esperados}
-
-RESPUESTA DEL ESTUDIANTE:
-<<<
-{respuesta}
->>>
-
-Para CADA punto esperado:
-- status: "cumplido" (lo razona correctamente), "parcial" (idea correcta pero incompleta o imprecisa) o "no".
-- student_evidence: cita LITERAL y exacta de la respuesta que lo respalda; null si es "no".
-Acepta formulaciones distintas a las del material si el razonamiento es correcto.
-
-Luego:
-- feedback: corrección argumentada (2-4 frases): qué razonó bien, qué faltó y por qué importa, citando el material.
-- model_answer: una respuesta modelo breve (2-3 frases) basada en el material.
-
-Esquema:
-{{
-  "points": [{{"id": "p1", "status": "cumplido", "student_evidence": "..."}}],
-  "feedback": "...",
-  "model_answer": "..."
-}}"""

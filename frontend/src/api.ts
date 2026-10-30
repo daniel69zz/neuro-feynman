@@ -3,8 +3,7 @@
 export type EstadoConcepto = "demostrado" | "por_verificar" | "omitido" | "incorrecto";
 export type TipoConcepto = "definicion" | "relacion" | "procedimiento" | "formula" | "ejemplo";
 export type EstadoTarea = "idle" | "pending" | "ready" | "error";
-export type EstadoPunto = "cumplido" | "parcial" | "no";
-export type NombreTarea = "extraccion" | "analisis" | "transferencia";
+export type NombreTarea = "extraccion" | "analisis";
 
 export interface Concepto {
   id: string;
@@ -31,20 +30,15 @@ export interface InfoTarea {
   raw: string | null;
 }
 
-export interface PuntoTransferencia {
+export interface Opcion {
   id: string;
   text: string;
-  status: EstadoPunto;
-  student_evidence: string | null;
-  evidence_verified: boolean | null;
 }
 
 export interface IntentoTransferencia {
-  answer: string;
-  points: PuntoTransferencia[];
-  feedback: string;
-  model_answer: string;
-  transfer_pct: number;
+  option_id: string;
+  correct: boolean;
+  explanation: string;
 }
 
 export interface Scores {
@@ -99,8 +93,12 @@ export interface Sesion {
   transfer: {
     question: string;
     target_concept_ids: string[];
+    options: Opcion[];
     attempts: IntentoTransferencia[];
     max_attempts: number;
+    finished: boolean;
+    correct_option_id: string | null;
+    correct_explanation: string | null;
   } | null;
   scores: Scores;
   calibration: Calibracion | null;
@@ -184,8 +182,9 @@ export const api = {
     pedir<Sesion>(`/api/sesiones/${id}/confianza`, json("POST", { confidence_pct: valor })),
   explicacion: (id: string, texto: string, segundos: number) =>
     pedir<Sesion>(`/api/sesiones/${id}/explicacion`, json("POST", { texto, segundos })),
-  transferencia: (id: string, respuesta: string) =>
-    pedir<Sesion>(`/api/sesiones/${id}/transferencia`, json("POST", { respuesta })),
+  // opcion null = ver la respuesta correcta sin usar el reintento
+  transferencia: (id: string, opcion: string | null) =>
+    pedir<Sesion>(`/api/sesiones/${id}/transferencia`, json("POST", { opcion })),
   entorno: (id: string, medido: EntornoMedido) => pedir<Sesion>(`/api/sesiones/${id}/entorno`, json("POST", medido)),
   reintentar: (id: string, tarea: NombreTarea) =>
     pedir<Sesion>(`/api/sesiones/${id}/reintentar/${tarea}`, { method: "POST" }),

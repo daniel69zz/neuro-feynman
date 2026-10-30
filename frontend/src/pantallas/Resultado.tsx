@@ -182,7 +182,7 @@ export function Resultado({ sesion, previo, repasoGuardado, onRepasoManana, onNu
               <td className="text-right font-bold tabular-nums">{pct(s.causal_explanation_pct)}</td>
             </tr>
             <tr>
-              <td className="text-suave">Pregunta de aplicación (mejor intento)</td>
+              <td className="text-suave">Pregunta de aplicación (100 % al primer intento, 50 % al segundo)</td>
               <td className="text-right tabular-nums">{s.weights.transfer} %</td>
               <td className="text-right font-bold tabular-nums">{pct(s.transfer_pct)}</td>
             </tr>
@@ -198,7 +198,7 @@ export function Resultado({ sesion, previo, repasoGuardado, onRepasoManana, onNu
           fijos. Una cita que no aparece en tu explicación baja el concepto a «por verificar».
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-          {(["extraccion", "analisis", "transferencia"] as const).map((n) => (
+          {(["extraccion", "analisis"] as const).map((n) => (
             <FirmaGemma key={n} tarea={sesion.tasks[n]} />
           ))}
         </div>

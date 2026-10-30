@@ -1,71 +1,32 @@
-// Pantalla 5: pregunta de aplicación, corrección argumentada y una oportunidad de reintento
+// Pantalla 5: pregunta de aplicación de opción múltiple, con explicación de cada respuesta y un reintento
 import { useState } from "react";
-import type { EstadoPunto, IntentoTransferencia, Sesion } from "../api";
-import { Boton, EsperandoGemma, Eyebrow, FirmaGemma, MensajeError, Superficie, pct } from "../ui";
+import type { Sesion } from "../api";
+import { Boton, Eyebrow, FirmaGemma, Superficie } from "../ui";
 
-const PUNTO: Record<EstadoPunto, { icono: string; clase: string; etiqueta: string }> = {
-  cumplido: { icono: "✓", clase: "bg-verde text-white", etiqueta: "Cumplido" },
-  parcial: { icono: "~", clase: "bg-ocre text-white", etiqueta: "Parcial" },
-  no: { icono: "✕", clase: "bg-rojo-fondo text-rojo", etiqueta: "No aparece" },
-};
+const LETRA = (i: number) => String.fromCharCode(65 + i);
 
-function Correccion({ intento, numero, verRespuesta }: { intento: IntentoTransferencia; numero: number; verRespuesta: boolean }) {
-  return (
-    <Superficie className="entrar flex flex-col gap-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-black">Corrección del intento {numero}</h2>
-        <span className="text-2xl font-black tabular-nums">{pct(intento.transfer_pct)}</span>
-      </div>
-      <ul className="flex flex-col gap-2.5">
-        {intento.points.map((p) => (
-          <li key={p.id} className="flex gap-3 text-sm">
-            <span
-              className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-black ${PUNTO[p.status].clase}`}
-              aria-label={PUNTO[p.status].etiqueta}
-            >
-              {PUNTO[p.status].icono}
-            </span>
-            <span>
-              {p.text}
-              {p.student_evidence && (
-                <span className="mt-0.5 block text-tenue">
-                  Tú: <q className="font-mano text-base font-bold text-tinta">{p.student_evidence}</q>
-                </span>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="border-t border-borde pt-4">{intento.feedback}</p>
-      {verRespuesta && (
-        <div className="entrar rounded-2xl bg-verde-fondo p-4 text-sm">
-          <p className="mb-1 text-xs font-bold text-verde">Respuesta modelo (basada en tu apunte)</p>
-          {intento.model_answer}
-        </div>
-      )}
-    </Superficie>
-  );
-}
-
-export function Transferencia({ sesion, ocupado, onEnviar, onReintentar, onResultado }: {
+export function Transferencia({ sesion, ocupado, onElegir, onResultado }: {
   sesion: Sesion;
   ocupado: boolean;
-  onEnviar: (respuesta: string) => void;
-  onReintentar: () => void;
+  onElegir: (opcion: string | null) => void;
   onResultado: () => void;
 }) {
   const t = sesion.transfer!;
-  const tarea = sesion.tasks.transferencia;
-  const [respuesta, setRespuesta] = useState("");
+  const [elegida, setElegida] = useState<string | null>(null);
   const [reintentando, setReintentando] = useState(false);
-  const [verRespuesta, setVerRespuesta] = useState(false);
 
   const ultimo = t.attempts.at(-1);
-  const quedanIntentos = t.attempts.length < t.max_attempts;
-  const pendiente = tarea.estado === "pending";
-  // se escribe si no hay intento aún, o si el estudiante eligió reintentar antes de ver la respuesta modelo
-  const escribiendo = !pendiente && (!ultimo || reintentando);
+  const usadas = new Set(t.attempts.map((a) => a.option_id));
+  // se elige si no hay intento aún, o si el estudiante pidió reintentar
+  const eligiendo = !t.finished && (!ultimo || reintentando);
   const objetivos = sesion.concepts.filter((c) => t.target_concept_ids.includes(c.id));
+
+  function estiloOpcion(id: string) {
+    if (t.finished && id === t.correct_option_id) return "bg-verde-fondo ring-2 ring-verde";
+    if (usadas.has(id)) return "bg-rojo-fondo/70 ring-1 ring-rojo/30 opacity-80";
+    if (eligiendo && elegida === id) return "bg-papel ring-2 ring-terracota";
+    return "bg-papel ring-1 ring-borde";
+  }
 
   return (
     <div className="entrar mx-auto flex max-w-3xl flex-col gap-6">
@@ -82,60 +43,92 @@ export function Transferencia({ sesion, ocupado, onEnviar, onReintentar, onResul
         )}
       </Superficie>
 
-      {escribiendo && (
-        <>
-          <textarea
-            autoFocus
-            value={respuesta}
-            onChange={(e) => setRespuesta(e.target.value)}
-            maxLength={3000}
-            rows={6}
-            placeholder="Explica tu razonamiento, no solo la respuesta…"
-            aria-label="Tu respuesta"
-            className="renglones rounded-[24px] bg-papel px-6 pt-1 text-lg ring-1 ring-borde outline-none focus:ring-2 focus:ring-terracota/60"
-          />
-          <div className="flex justify-end">
-            <Boton
-              disabled={respuesta.trim().length < 5 || ocupado}
-              onClick={() => {
-                onEnviar(respuesta.trim());
-                setReintentando(false);
-              }}
-            >
-              {ultimo ? "Enviar segundo intento" : "Enviar respuesta"}
-            </Boton>
-          </div>
-        </>
+      <ul className="cascada flex flex-col gap-3" role="radiogroup" aria-label="Opciones">
+        {t.options.map((o, i) => {
+          const bloqueada = !eligiendo || usadas.has(o.id);
+          return (
+            <li key={o.id}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={elegida === o.id}
+                disabled={bloqueada || ocupado}
+                onClick={() => setElegida(o.id)}
+                className={`presionable flex w-full items-start gap-4 rounded-[20px] p-4 text-left transition-[box-shadow,background-color] duration-150 disabled:cursor-default ${estiloOpcion(o.id)}`}
+              >
+                <span
+                  className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-black ${
+                    t.finished && o.id === t.correct_option_id
+                      ? "bg-verde text-white"
+                      : usadas.has(o.id)
+                        ? "bg-rojo text-white"
+                        : eligiendo && elegida === o.id
+                          ? "bg-terracota text-white"
+                          : "bg-borde/70 text-suave"
+                  }`}
+                >
+                  {t.finished && o.id === t.correct_option_id ? "✓" : usadas.has(o.id) ? "✕" : LETRA(i)}
+                </span>
+                <span className="pt-1 text-pretty">{o.text}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {eligiendo && (
+        <div className="flex justify-end">
+          <Boton
+            disabled={!elegida || usadas.has(elegida) || ocupado}
+            onClick={() => {
+              onElegir(elegida);
+              setReintentando(false);
+            }}
+          >
+            {ultimo ? "Responder de nuevo" : "Responder"}
+          </Boton>
+        </div>
       )}
 
-      {pendiente && <EsperandoGemma texto="Gemma 4 está corrigiendo tu razonamiento…" detalle="revisa cada punto contra tu apunte" />}
-      {tarea.estado === "error" && (
-        <MensajeError texto={`Gemma no pudo corregir la respuesta: ${tarea.error}`} onReintentar={onReintentar} />
+      {ultimo && !eligiendo && (
+        <Superficie className={`entrar flex flex-col gap-3 ${ultimo.correct ? "!bg-verde-fondo ring-verde/20" : ""}`}>
+          <h2 className={`font-black ${ultimo.correct ? "text-verde" : "text-rojo"}`}>
+            {ultimo.correct
+              ? t.attempts.length === 1
+                ? "¡Correcto al primer intento!"
+                : "Correcto en el segundo intento"
+              : "No es la respuesta correcta"}
+          </h2>
+          <p>{ultimo.explanation}</p>
+          {t.finished && !ultimo.correct && t.correct_explanation && (
+            <div className="rounded-2xl bg-verde-fondo p-4 text-sm">
+              <p className="mb-1 text-xs font-bold text-verde">La correcta y por qué</p>
+              {t.correct_explanation}
+            </div>
+          )}
+        </Superficie>
       )}
 
-      {ultimo && !reintentando && !pendiente && (
-        <>
-          <Correccion intento={ultimo} numero={t.attempts.length} verRespuesta={verRespuesta} />
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            {!verRespuesta && quedanIntentos && (
+      {ultimo && !eligiendo && (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {!t.finished && (
+            <>
               <Boton
                 variante="secundario"
                 onClick={() => {
-                  setRespuesta(ultimo.answer);
+                  setElegida(null);
                   setReintentando(true);
                 }}
               >
                 Intentar de nuevo
               </Boton>
-            )}
-            {!verRespuesta && (
-              <Boton variante="fantasma" onClick={() => setVerRespuesta(true)}>
-                {quedanIntentos ? "Ver respuesta modelo (sin reintento)" : "Ver respuesta modelo"}
+              <Boton variante="fantasma" disabled={ocupado} onClick={() => onElegir(null)}>
+                Ver la respuesta correcta
               </Boton>
-            )}
-            <Boton onClick={onResultado}>Ver mi resultado →</Boton>
-          </div>
-        </>
+            </>
+          )}
+          <Boton onClick={onResultado}>Ver mi resultado →</Boton>
+        </div>
       )}
     </div>
   );

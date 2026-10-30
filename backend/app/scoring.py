@@ -11,7 +11,8 @@ PESOS = {"concept_recall": 40, "causal_explanation": 30, "transfer": 30}
 UMBRAL_BRECHA = 20
 
 VALOR_ESTADO = {"demostrado": 1.0, "por_verificar": 0.5, "omitido": 0.0, "incorrecto": 0.0}
-VALOR_PUNTO = {"cumplido": 1.0, "parcial": 0.5, "no": 0.0}
+# aplicación: acierto al primer intento 100 %, al segundo 50 % (con 4 opciones, adivinar no debe valer lo mismo)
+VALOR_ACIERTO = (100.0, 50.0)
 PESO_ESENCIAL = 2.0
 
 
@@ -57,10 +58,13 @@ def causal(conceptos: list[dict]) -> float | None:
     return _redondear(len(con_relacion) / len(base))
 
 
-def transferencia(puntos: list[dict]) -> float:
-    if not puntos:
-        return 0.0
-    return _redondear(sum(VALOR_PUNTO[p["status"]] for p in puntos) / len(puntos))
+def transferencia(intentos: list[dict]) -> float | None:
+    if not intentos:
+        return None
+    for i, intento in enumerate(intentos[: len(VALOR_ACIERTO)]):
+        if intento["correct"]:
+            return VALOR_ACIERTO[i]
+    return 0.0
 
 
 def calcular(conceptos: list[dict], transfer_pct: float | None, confianza: int | None) -> dict:

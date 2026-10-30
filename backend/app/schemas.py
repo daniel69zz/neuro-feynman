@@ -7,12 +7,11 @@ Dos grupos:
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 EstadoConcepto = Literal["demostrado", "por_verificar", "omitido", "incorrecto"]
 TipoConcepto = Literal["definicion", "relacion", "procedimiento", "formula", "ejemplo"]
 EstadoTarea = Literal["idle", "pending", "ready", "error"]
-EstadoPunto = Literal["cumplido", "parcial", "no"]
 # fuente → confianza → explicacion → brechas → transferencia → resultado
 Fase = Literal["fuente", "confianza", "explicacion", "brechas", "transferencia", "resultado"]
 
@@ -44,29 +43,25 @@ class EvaluacionConceptoIA(BaseModel):
     corrective_question: str | None = Field(default=None, max_length=400)
 
 
-class PuntoEsperadoIA(BaseModel):
-    id: str
-    text: str = Field(max_length=300)
+class OpcionIA(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+    correct: bool
+    # por qué es correcta o en qué falla; solo se muestra después de responder
+    explanation: str = Field(min_length=1, max_length=500)
 
 
 class AnalisisIA(BaseModel):
     concepts: list[EvaluacionConceptoIA]
     transfer_question: str = Field(min_length=10, max_length=600)
     target_concept_ids: list[str] = Field(default_factory=list)
-    expected_points: list[PuntoEsperadoIA] = Field(min_length=1, max_length=5)
+    options: list[OpcionIA] = Field(min_length=3, max_length=5)
     uncertainty: str = ""
 
-
-class PuntoEvaluadoIA(BaseModel):
-    id: str
-    status: EstadoPunto
-    student_evidence: str | None = None
-
-
-class TransferenciaIA(BaseModel):
-    points: list[PuntoEvaluadoIA]
-    feedback: str = Field(max_length=800)
-    model_answer: str = Field(max_length=800)
+    @model_validator(mode="after")
+    def una_correcta(self):
+        if sum(o.correct for o in self.options) != 1:
+            raise ValueError("La pregunta debe tener exactamente una opción correcta.")
+        return self
 
 
 # ---------- Entradas del frontend ----------
@@ -105,7 +100,8 @@ class EntornoMedido(BaseModel):
 
 
 class RespuestaTransferencia(BaseModel):
-    respuesta: str = Field(min_length=5, max_length=3000)
+    # None = ver la respuesta correcta sin usar el reintento
+    opcion: str | None = Field(default=None, max_length=4)
 
 
 # ---------- Contrato público ----------
@@ -138,27 +134,27 @@ class InfoTarea(BaseModel):
     raw: str | None = None
 
 
-class PuntoTransferencia(BaseModel):
+class Opcion(BaseModel):
     id: str
     text: str
-    status: EstadoPunto
-    student_evidence: str | None = None
-    evidence_verified: bool | None = None
 
 
 class IntentoTransferencia(BaseModel):
-    answer: str
-    points: list[PuntoTransferencia]
-    feedback: str
-    model_answer: str
-    transfer_pct: float
+    option_id: str
+    correct: bool
+    explanation: str
 
 
 class Transferencia(BaseModel):
     question: str
     target_concept_ids: list[str]
+    options: list[Opcion]
     attempts: list[IntentoTransferencia] = Field(default_factory=list)
     max_attempts: int = 2
+    # la respuesta correcta solo se revela al terminar (acierto, intentos agotados o al pedirla)
+    finished: bool = False
+    correct_option_id: str | None = None
+    correct_explanation: str | None = None
 
 
 class Scores(BaseModel):

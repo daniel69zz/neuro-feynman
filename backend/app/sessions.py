@@ -4,6 +4,7 @@ verificar sus citas contra el texto real del estudiante.
 """
 
 import asyncio
+import random
 import re
 import time
 import uuid
@@ -49,13 +50,13 @@ class Sesion:
     incertidumbre: str | None = None
     pregunta: str | None = None
     conceptos_objetivo: list[str] = field(default_factory=list)
-    # solo servidor: nunca se envía antes del intento del estudiante
-    puntos_esperados: list[dict] = field(default_factory=list)
+    # opciones de la pregunta de aplicación; cuál es correcta y las explicaciones solo se revelan al terminar
+    opciones: list[dict] = field(default_factory=list)
     intentos_transferencia: list[dict] = field(default_factory=list)
-    respuesta_pendiente: str | None = None
+    transferencia_cerrada: bool = False
     entorno: schemas.EntornoMedido | None = None
     tareas: dict[str, Tarea] = field(
-        default_factory=lambda: {"extraccion": Tarea(), "analisis": Tarea(), "transferencia": Tarea()}
+        default_factory=lambda: {"extraccion": Tarea(), "analisis": Tarea()}
     )
 
 
@@ -237,7 +238,10 @@ def lanzar_analisis(s: Sesion) -> None:
         validos = {c["id"] for c in s.conceptos}
         s.pregunta = d.transfer_question.strip()
         s.conceptos_objetivo = [i for i in d.target_concept_ids if i in validos]
-        s.puntos_esperados = [p.model_dump() for p in d.expected_points]
+        # se barajan: el modelo tiende a poner la correcta siempre en la misma posición
+        opciones = [o.model_dump() for o in d.options]
+        random.shuffle(opciones)
+        s.opciones = [{**o, "id": "abcde"[i]} for i, o in enumerate(opciones)]
         s.incertidumbre = d.uncertainty or None
 
     _lanzar(
@@ -285,70 +289,30 @@ def _aplicar_evaluacion(c: dict, ev: schemas.EvaluacionConceptoIA, texto: str) -
     )
 
 
-# ---------- Etapa 3: evaluación de la transferencia ----------
+# ---------- Pregunta de aplicación: se corrige en código, sin otra llamada al modelo ----------
 
 
-def enviar_transferencia(s: Sesion, respuesta: str) -> None:
-    if s.pregunta is None or s.tareas["analisis"].estado != "ready":
-        raise ErrorSesion("La pregunta de transferencia todavía no está lista.")
-    if s.tareas["transferencia"].estado == "pending":
-        raise ErrorSesion("Ya se está evaluando una respuesta.")
-    if len(s.intentos_transferencia) >= MAX_INTENTOS_TRANSFERENCIA:
-        raise ErrorSesion("Ya usaste todos los intentos de esta pregunta.")
-    s.respuesta_pendiente = respuesta.strip()
-    lanzar_transferencia(s)
-
-
-def lanzar_transferencia(s: Sesion) -> None:
-    respuesta = s.respuesta_pendiente
-    if not respuesta:
-        raise ErrorSesion("No hay respuesta pendiente de evaluar.")
-    if s.tareas["transferencia"].estado == "pending":
+def enviar_transferencia(s: Sesion, opcion: str | None) -> None:
+    if not s.opciones or s.tareas["analisis"].estado != "ready":
+        raise ErrorSesion("La pregunta de aplicación todavía no está lista.")
+    if s.transferencia_cerrada:
+        raise ErrorSesion("Esta pregunta ya terminó.")
+    if opcion is None:
+        # ver la respuesta correcta sin usar el reintento (solo después de un primer intento)
+        if not s.intentos_transferencia:
+            raise ErrorSesion("Responde al menos una vez antes de ver la respuesta.")
+        s.transferencia_cerrada = True
         return
-
-    def aplicar(d: schemas.TransferenciaIA) -> None:
-        por_id = {p.id: p for p in d.points}
-        puntos = []
-        for esperado in s.puntos_esperados:
-            p = por_id.get(esperado["id"])
-            estado = p.status if p else "no"
-            cita = p.student_evidence.strip() if p and p.student_evidence else None
-            verificada = scoring.cita_verificada(cita, respuesta) if cita else None
-            # un punto "cumplido" sin cita verificable cuenta como parcial
-            if estado == "cumplido" and not verificada:
-                estado = "parcial"
-            if estado == "no":
-                cita, verificada = None, None
-            puntos.append(
-                {
-                    "id": esperado["id"],
-                    "text": esperado["text"],
-                    "status": estado,
-                    "student_evidence": cita,
-                    "evidence_verified": verificada,
-                }
-            )
-        s.intentos_transferencia.append(
-            {
-                "answer": respuesta,
-                "points": puntos,
-                "feedback": d.feedback,
-                "model_answer": d.model_answer,
-                "transfer_pct": scoring.transferencia(puntos),
-            }
-        )
-        s.respuesta_pendiente = None
-
-    _lanzar(
-        s,
-        "transferencia",
-        lambda: gemma.consultar(
-            prompts.transferencia(s.topic or "", s.conceptos, s.pregunta or "", s.puntos_esperados, respuesta),
-            schemas.TransferenciaIA,
-        ),
-        lambda: simulado.transferencia(respuesta),
-        aplicar,
+    elegida = next((o for o in s.opciones if o["id"] == opcion), None)
+    if elegida is None:
+        raise ErrorSesion("Esa opción no existe.", 422)
+    if any(i["option_id"] == opcion for i in s.intentos_transferencia):
+        raise ErrorSesion("Ya elegiste esa opción.")
+    s.intentos_transferencia.append(
+        {"option_id": opcion, "correct": elegida["correct"], "explanation": elegida["explanation"]}
     )
+    if elegida["correct"] or len(s.intentos_transferencia) >= MAX_INTENTOS_TRANSFERENCIA:
+        s.transferencia_cerrada = True
 
 
 def reintentar(s: Sesion, tarea: str) -> None:
@@ -356,8 +320,6 @@ def reintentar(s: Sesion, tarea: str) -> None:
         lanzar_extraccion(s)
     elif tarea == "analisis":
         lanzar_analisis(s)
-    elif tarea == "transferencia":
-        lanzar_transferencia(s)
     else:
         raise ErrorSesion("Tarea desconocida.", 404)
 
@@ -382,20 +344,24 @@ def _fase(s: Sesion) -> str:
 
 
 def publica(s: Sesion) -> schemas.SesionPublica:
-    # mejor intento de transferencia (la oportunidad de reintento no castiga el primer error)
-    transfer_pct = max((i["transfer_pct"] for i in s.intentos_transferencia), default=None)
+    transfer_pct = scoring.transferencia(s.intentos_transferencia)
     analizado = s.tareas["analisis"].estado == "ready"
     conceptos_eval = s.conceptos if analizado else [{k: v for k, v in c.items() if k != "status"} for c in s.conceptos]
     scores = scoring.calcular(conceptos_eval, transfer_pct, s.confianza)
     calib = scoring.calibracion(scores, s.conceptos, s.confianza) if analizado else None
 
     transfer = None
-    if s.pregunta and analizado:
+    if s.pregunta and s.opciones and analizado:
+        correcta = next(o for o in s.opciones if o["correct"])
         transfer = schemas.Transferencia(
             question=s.pregunta,
             target_concept_ids=s.conceptos_objetivo,
+            options=[schemas.Opcion(id=o["id"], text=o["text"]) for o in s.opciones],
             attempts=[schemas.IntentoTransferencia(**i) for i in s.intentos_transferencia],
             max_attempts=MAX_INTENTOS_TRANSFERENCIA,
+            finished=s.transferencia_cerrada,
+            correct_option_id=correcta["id"] if s.transferencia_cerrada else None,
+            correct_explanation=correcta["explanation"] if s.transferencia_cerrada else None,
         )
 
     return schemas.SesionPublica(

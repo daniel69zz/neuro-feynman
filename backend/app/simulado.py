@@ -106,28 +106,28 @@ async def analisis(conceptos: list[dict], explicacion: str) -> schemas.AnalisisI
             "a qué computadora corresponde cada respuesta que llega desde Internet?"
         ),
         target_concept_ids=["pat-puertos", "tabla-nat"],
-        expected_points=[
-            schemas.PuntoEsperadoIA(id="p1", text="Usa puertos distintos de la IP pública para cada conexión (PAT)."),
-            schemas.PuntoEsperadoIA(id="p2", text="Guarda la correspondencia IP privada:puerto ↔ puerto público en una tabla."),
-            schemas.PuntoEsperadoIA(id="p3", text="Con esa tabla reenvía cada respuesta al equipo correcto."),
+        options=[
+            schemas.OpcionIA(
+                text="Asigna a cada conexión un puerto público distinto y guarda la correspondencia en la tabla NAT.",
+                correct=True,
+                explanation="[Simulado] Es PAT: el puerto público identifica la conexión y la tabla dice a qué equipo volver.",
+            ),
+            schemas.OpcionIA(
+                text="Le da a cada computadora su propia IP pública mientras dura la conexión.",
+                correct=False,
+                explanation="[Simulado] Solo hay una IP pública; repartir IP públicas sería NAT estático, no PAT.",
+            ),
+            schemas.OpcionIA(
+                text="Reenvía cada respuesta a todas las computadoras y cada una descarta lo que no es suyo.",
+                correct=False,
+                explanation="[Simulado] El router no difunde las respuestas: las entrega a un solo equipo usando la tabla.",
+            ),
+            schemas.OpcionIA(
+                text="Usa la IP privada de destino que viene escrita en la respuesta desde Internet.",
+                correct=False,
+                explanation="[Simulado] Desde Internet solo se ve la IP pública; la privada la conoce únicamente el router.",
+            ),
         ],
         uncertainty="[Simulado] Evaluación por palabras clave, no por Gemma.",
     )
 
-
-async def transferencia(respuesta: str) -> schemas.TransferenciaIA:
-    await asyncio.sleep(1.2)
-    reglas = {"p1": ["puerto"], "p2": ["tabla", "traduc", "guarda", "registr"], "p3": ["reenv", "devuel", "correspond"]}
-    puntos = []
-    for pid, claves in reglas.items():
-        cita = _primera_frase_con(respuesta, claves)
-        puntos.append(schemas.PuntoEvaluadoIA(id=pid, status="cumplido" if cita else "no", student_evidence=cita))
-    return schemas.TransferenciaIA(
-        points=puntos,
-        feedback="[Simulado] Corrección por palabras clave para probar la interfaz.",
-        model_answer=(
-            "El router usa PAT: asigna a cada conexión un puerto distinto de su IP pública y guarda en la tabla NAT "
-            "la correspondencia con la IP y el puerto privados. Cuando llega una respuesta, busca el puerto en la "
-            "tabla y la reenvía al equipo correcto."
-        ),
-    )

@@ -105,7 +105,7 @@ async def enviar_explicacion(sid: str, cuerpo: schemas.Explicacion):
 @app.post("/api/sesiones/{sid}/transferencia", response_model=schemas.SesionPublica)
 async def enviar_transferencia(sid: str, cuerpo: schemas.RespuestaTransferencia):
     s = sessions.obtener(sid)
-    sessions.enviar_transferencia(s, cuerpo.respuesta)
+    sessions.enviar_transferencia(s, cuerpo.opcion)
     return sessions.publica(s)
 
 
