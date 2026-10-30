@@ -68,11 +68,10 @@ export default function App() {
     }
   }
 
-  // control de calidad local antes de gastar una llamada a Gemma
+  // toda foto pasa por la revisión (con control de calidad local) antes de gastar una llamada a Gemma
   async function revisarArchivo(archivo: File) {
     try {
       const informe = await analizarArchivo(archivo);
-      if (informe.problemas.length === 0) return enviarFoto(archivo);
       setRevision({ archivo, url: URL.createObjectURL(archivo), informe, origen: "archivo" });
     } catch {
       // formato que el navegador no decodifica (p. ej. HEIC): lo valida el backend
@@ -150,7 +149,6 @@ export default function App() {
             repasoPendiente={pendiente}
             ocupado={ocupado}
             onArchivo={revisarArchivo}
-            onCamara={() => setCamara(true)}
             onEjemplo={(e) => ejecutar(() => api.crearConEjemplo(e), "fuente")}
             onRepaso={empezarRepaso}
           />
@@ -218,6 +216,14 @@ export default function App() {
           textoOtra={revision.origen === "camara" ? "Repetir foto" : "Elegir otra"}
           onUsar={() => enviarFoto(revision.archivo)}
           onOtra={cerrarRevision}
+          onCamara={
+            revision.origen === "archivo"
+              ? () => {
+                  cerrarRevision();
+                  setCamara(true);
+                }
+              : undefined
+          }
           onCerrar={() => {
             cerrarRevision();
             setCamara(false);

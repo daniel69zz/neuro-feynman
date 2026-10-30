@@ -69,11 +69,12 @@ function Indicadores({ informe, oscuro = false }: { informe: Informe; oscuro?: b
 }
 
 /** Informe de una foto ya tomada o elegida: el estudiante decide si la envía a Gemma. */
-export function RevisionFoto({ foto, textoOtra, onUsar, onOtra, onCerrar }: {
+export function RevisionFoto({ foto, textoOtra, onUsar, onOtra, onCamara, onCerrar }: {
   foto: FotoRevisada;
   textoOtra: string;
   onUsar: () => void;
   onOtra: () => void;
+  onCamara?: () => void;
   onCerrar: () => void;
 }) {
   const { informe } = foto;
@@ -85,7 +86,7 @@ export function RevisionFoto({ foto, textoOtra, onUsar, onOtra, onCerrar }: {
         </div>
         <div className="flex flex-col gap-4 p-6">
           <div>
-            <p className="text-xs font-bold tracking-[0.18em] text-tenue uppercase">Control de calidad</p>
+            <p className="text-xs font-bold tracking-[0.18em] text-tenue uppercase">Antes de enviar · control de calidad</p>
             <h2 className="mt-1 text-2xl font-black">
               {informe.problemas.length === 0 ? "La foto se ve bien" : informe.apta ? "Se puede leer, con avisos" : "Gemma podría no leerla bien"}
             </h2>
@@ -106,13 +107,22 @@ export function RevisionFoto({ foto, textoOtra, onUsar, onOtra, onCerrar }: {
           <p className="text-xs text-tenue">
             Medido en tu navegador, sin enviar nada. Son reglas orientativas: si Gemma no puede leer la foto, igual te lo dirá.
           </p>
-          <div className="mt-auto flex flex-wrap justify-end gap-2 pt-2">
-            <Boton variante="secundario" onClick={onOtra}>
-              {textoOtra}
+          {/* acción principal a todo el ancho; las alternativas, en una fila debajo */}
+          <div className="mt-auto flex flex-col gap-2 pt-2">
+            <Boton onClick={onUsar} variante={informe.apta ? "primario" : "secundario"} className="w-full">
+              {informe.problemas.length === 0 ? "Enviar a Gemma" : "Enviar igualmente"}
             </Boton>
-            <Boton onClick={onUsar} variante={informe.apta ? "primario" : "secundario"}>
-              {informe.problemas.length === 0 ? "Usar esta foto" : "Usar igualmente"}
-            </Boton>
+            <div className="grid grid-cols-2 gap-2">
+              {onCamara && (
+                <Boton variante="secundario" onClick={onCamara} className="px-3">
+                  <span className="size-2 rounded-full bg-rojo" aria-hidden />
+                  Usar la cámara
+                </Boton>
+              )}
+              <Boton variante="secundario" onClick={onOtra} className={`px-3 ${onCamara ? "" : "col-span-2"}`}>
+                {textoOtra}
+              </Boton>
+            </div>
           </div>
         </div>
       </div>

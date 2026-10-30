@@ -6,7 +6,7 @@ Detector de ilusión de competencia y entrenador de recuperación activa asistid
 
 ## Recorrido
 
-1. **Apunte**: subes una foto (cuaderno, pizarra o diapositiva) o la tomas con la cámara. Antes de enviarla a Gemma, el navegador revisa la luz, los reflejos, el contraste tinta–papel, la nitidez (varianza del laplaciano) y el ruido (estimador de Immerkær), y avisa si la foto puede ser ilegible. Así no se gasta una llamada en una mala foto. Después, Gemma 4 extrae los conceptos con la evidencia del material.
+1. **Apunte**: subes una foto (cuaderno, pizarra o diapositiva). Antes de enviarla a Gemma pasa por una revisión, donde también puedes tomarla con la cámara. El navegador revisa la luz, los reflejos, el contraste tinta–papel, la nitidez (varianza del laplaciano) y el ruido (estimador de Immerkær), y avisa si la foto puede ser ilegible. Así no se gasta una llamada en una mala foto. Después, Gemma 4 extrae los conceptos con la evidencia del material.
 2. **Revisión**: corriges lo que se leyó mal. El apunte corregido es la fuente de verdad.
 3. **Confianza**: declaras de 0 a 100 % qué tan preparado te sientes, antes de ver nada.
 4. **Explicación sin mirar**: por texto o dictado. El dictado usa la Web Speech API del navegador y no gasta tokens.
