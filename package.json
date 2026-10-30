@@ -1,0 +1,18 @@
+{
+  "name": "neuro-feynman",
+  "private": true,
+  "description": "Detector de ilusión de competencia y entrenador de recuperación activa con Gemma 4.",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run api\" \"npm run dev -w frontend\"",
+    "api": "cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000",
+    "setup:backend": "cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt",
+    "typecheck": "npm run typecheck -w frontend",
+    "build": "npm run build -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

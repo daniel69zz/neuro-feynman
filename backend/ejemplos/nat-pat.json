@@ -1,0 +1,8 @@
+{
+  "archivo": "nat-pat.png",
+  "titulo": "Redes II — NAT y PAT",
+  "descripcion": "Apunte sintético de ejemplo (letra manuscrita generada). Reemplázalo por una foto real.",
+  "sintetico": true,
+  "explicacion_sugerida": "NAT permite cambiar direcciones IP privadas por públicas para acceder a Internet.",
+  "confianza_sugerida": 90
+}
