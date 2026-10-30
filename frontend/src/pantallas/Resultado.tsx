@@ -20,6 +20,49 @@ function Barra({ etiqueta, valor, color, visible }: { etiqueta: string; valor: n
   );
 }
 
+const NIVEL_ENTORNO = {
+  ok: { punto: "bg-verde", etiqueta: "Bien" },
+  aviso: { punto: "bg-ocre", etiqueta: "Mejorable" },
+  alto: { punto: "bg-rojo", etiqueta: "Desfavorable" },
+} as const;
+
+/** Condiciones de luz y ruido al enviar el apunte y si pudieron influir en un mal resultado. */
+function Entorno({ sesion }: { sesion: Sesion }) {
+  const e = sesion.entorno;
+  if (!e) {
+    return (
+      <p className="text-sm text-tenue">
+        No mediste tu entorno en esta sesión. La próxima vez, al enviar el apunte, mide luz y ruido para saber si influyeron.
+      </p>
+    );
+  }
+  return (
+    <Superficie className={e.posible_influencia ? "!bg-ambar-fondo ring-ambar/25" : ""}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className={`font-black ${e.posible_influencia ? "text-ambar" : ""}`}>
+          {e.posible_influencia ? "Tu entorno pudo haber influido" : "Tu entorno al estudiar"}
+        </h2>
+        <span className="text-xs text-tenue">medido al enviar el apunte · orientativo</span>
+      </div>
+      <p className="mt-2 text-suave">{e.nota}</p>
+      {e.factores.length > 0 && (
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          {e.factores.map((f) => (
+            <li key={f.id} className="flex gap-3 rounded-2xl bg-papel/70 p-3.5 text-sm ring-1 ring-borde">
+              <span className={`mt-1.5 size-2.5 shrink-0 rounded-full ${NIVEL_ENTORNO[f.nivel].punto}`} aria-label={NIVEL_ENTORNO[f.nivel].etiqueta} />
+              <span>
+                <strong className="block">{f.titulo}</strong>
+                <span className="text-tenue">{f.detalle}</span>
+                {f.sugerencia && <span className="mt-1 block">{f.sugerencia}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Superficie>
+  );
+}
+
 export function Resultado({ sesion, previo, repasoGuardado, onRepasoManana, onNueva }: {
   sesion: Sesion;
   previo: RepasoPendiente | null;
@@ -93,6 +136,8 @@ export function Resultado({ sesion, previo, repasoGuardado, onRepasoManana, onNu
           </Superficie>
         </div>
       )}
+
+      <Entorno sesion={sesion} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Superficie>

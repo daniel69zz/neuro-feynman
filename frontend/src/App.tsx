@@ -5,6 +5,7 @@ import { analizarArchivo } from "./calidad";
 import { Brechas } from "./pantallas/Brechas";
 import { Camara, RevisionFoto, type FotoRevisada } from "./pantallas/Camara";
 import { Confianza } from "./pantallas/Confianza";
+import { MedirEntorno } from "./pantallas/Entorno";
 import { Explicacion } from "./pantallas/Explicacion";
 import { Fuente } from "./pantallas/Fuente";
 import { Inicio } from "./pantallas/Inicio";
@@ -33,6 +34,7 @@ export default function App() {
   const [previo, setPrevio] = useState<RepasoPendiente | null>(null);
   const [repasoGuardado, setRepasoGuardado] = useState(false);
   const [camara, setCamara] = useState(false);
+  const [medirEntorno, setMedirEntorno] = useState(false);
   const [revision, setRevision] = useState<(FotoRevisada & { origen: "camara" | "archivo" }) | null>(null);
 
   useEffect(() => {
@@ -55,17 +57,24 @@ export default function App() {
     return () => clearInterval(id);
   }, [sesion?.session_id, hayPendiente]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function ejecutar(accion: () => Promise<Sesion>, siguiente?: Pantalla) {
+  async function ejecutar(accion: () => Promise<Sesion>, siguiente?: Pantalla): Promise<boolean> {
     setOcupado(true);
     setError(null);
     try {
       setSesion(await accion());
       if (siguiente) setPantalla(siguiente);
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setOcupado(false);
     }
+  }
+
+  // al enviar el apunte se ofrece medir el entorno, aprovechando la espera de Gemma
+  async function nuevaSesion(accion: () => Promise<Sesion>, siguiente: Pantalla) {
+    if (await ejecutar(accion, siguiente)) setMedirEntorno(true);
   }
 
   // toda foto pasa por la revisión (con control de calidad local) antes de gastar una llamada a Gemma
@@ -87,7 +96,7 @@ export default function App() {
   function enviarFoto(archivo: File) {
     cerrarRevision();
     setCamara(false);
-    ejecutar(() => api.crearConImagen(archivo), "fuente");
+    nuevaSesion(() => api.crearConImagen(archivo), "fuente");
   }
 
   function reiniciar() {
@@ -124,7 +133,7 @@ export default function App() {
   function empezarRepaso() {
     if (!pendiente) return;
     const r = pendiente;
-    ejecutar(async () => {
+    nuevaSesion(async () => {
       const s = await api.crearRepaso(r.topic, r.concepts);
       setPrevio(r);
       repaso.borrar();
@@ -149,7 +158,7 @@ export default function App() {
             repasoPendiente={pendiente}
             ocupado={ocupado}
             onArchivo={revisarArchivo}
-            onEjemplo={(e) => ejecutar(() => api.crearConEjemplo(e), "fuente")}
+            onEjemplo={(e) => nuevaSesion(() => api.crearConEjemplo(e), "fuente")}
             onRepaso={empezarRepaso}
           />
         )}
@@ -209,6 +218,17 @@ export default function App() {
 
       {camara && !revision && (
         <Camara onCerrar={() => setCamara(false)} onFoto={(f) => setRevision({ ...f, origen: "camara" })} />
+      )}
+      {medirEntorno && sesion && (
+        <MedirEntorno
+          onOmitir={() => setMedirEntorno(false)}
+          onListo={(m) => {
+            setMedirEntorno(false);
+            const sid = sesion.session_id;
+            // el resultado del entorno se guarda sin interrumpir el flujo
+            api.entorno(sid, m).then((s) => setSesion((actual) => (actual?.session_id === sid ? { ...actual, entorno: s.entorno } : actual))).catch(() => undefined);
+          }}
+        />
       )}
       {revision && (
         <RevisionFoto

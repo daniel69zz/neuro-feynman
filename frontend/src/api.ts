@@ -68,6 +68,22 @@ export interface Calibracion {
   provisional: boolean;
 }
 
+export interface EntornoMedido {
+  brillo: number | null;
+  grano: number | null;
+  contraluz: number | null;
+  sonido_dbfs: number | null;
+  sonido_pico_dbfs: number | null;
+}
+
+export interface FactorEntorno {
+  id: "luz" | "contraluz" | "ruido";
+  nivel: "ok" | "aviso" | "alto";
+  titulo: string;
+  detalle: string;
+  sugerencia: string | null;
+}
+
 export interface Sesion {
   session_id: string;
   phase: "fuente" | "confianza" | "explicacion" | "brechas" | "transferencia" | "resultado";
@@ -88,6 +104,7 @@ export interface Sesion {
   } | null;
   scores: Scores;
   calibration: Calibracion | null;
+  entorno: { medido: EntornoMedido; factores: FactorEntorno[]; posible_influencia: boolean; nota: string } | null;
   tasks: Record<NombreTarea, InfoTarea>;
   gemma: { modelo: string; modo: "live" | "demo"; acceso: string };
   disclaimer: string;
@@ -169,6 +186,7 @@ export const api = {
     pedir<Sesion>(`/api/sesiones/${id}/explicacion`, json("POST", { texto, segundos })),
   transferencia: (id: string, respuesta: string) =>
     pedir<Sesion>(`/api/sesiones/${id}/transferencia`, json("POST", { respuesta })),
+  entorno: (id: string, medido: EntornoMedido) => pedir<Sesion>(`/api/sesiones/${id}/entorno`, json("POST", medido)),
   reintentar: (id: string, tarea: NombreTarea) =>
     pedir<Sesion>(`/api/sesiones/${id}/reintentar/${tarea}`, { method: "POST" }),
   urlImagen: (id: string) => `/api/sesiones/${id}/imagen`,

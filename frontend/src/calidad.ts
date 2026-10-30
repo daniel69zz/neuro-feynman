@@ -41,7 +41,7 @@ export const UMBRALES = {
 const ANCHO_ANALISIS = 480;
 
 /** Dibuja la fuente reducida en un canvas y devuelve la luminancia (Rec. 601). */
-function grises(fuente: CanvasImageSource, ancho: number, alto: number): { g: Float32Array; w: number; h: number } {
+export function grises(fuente: CanvasImageSource, ancho: number, alto: number): { g: Float32Array; w: number; h: number } {
   const escala = Math.min(1, ANCHO_ANALISIS / ancho);
   const w = Math.max(1, Math.round(ancho * escala));
   const h = Math.max(1, Math.round(alto * escala));

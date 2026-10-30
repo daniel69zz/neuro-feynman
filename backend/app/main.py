@@ -109,6 +109,13 @@ async def enviar_transferencia(sid: str, cuerpo: schemas.RespuestaTransferencia)
     return sessions.publica(s)
 
 
+@app.post("/api/sesiones/{sid}/entorno", response_model=schemas.SesionPublica)
+async def registrar_entorno(sid: str, cuerpo: schemas.EntornoMedido):
+    s = sessions.obtener(sid)
+    sessions.registrar_entorno(s, cuerpo)
+    return sessions.publica(s)
+
+
 @app.post("/api/sesiones/{sid}/reintentar/{tarea}", response_model=schemas.SesionPublica)
 async def reintentar(sid: str, tarea: str):
     s = sessions.obtener(sid)

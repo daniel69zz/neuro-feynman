@@ -94,6 +94,16 @@ class Explicacion(BaseModel):
     segundos: int | None = Field(default=None, ge=0, le=3600)
 
 
+class EntornoMedido(BaseModel):
+    """Números medidos en el navegador; ni la foto ni el audio salen del dispositivo."""
+
+    brillo: float | None = Field(default=None, ge=0, le=255)
+    grano: float | None = Field(default=None, ge=0, le=100)
+    contraluz: float | None = Field(default=None, ge=-255, le=255)
+    sonido_dbfs: float | None = Field(default=None, ge=-120, le=0)
+    sonido_pico_dbfs: float | None = Field(default=None, ge=-120, le=0)
+
+
 class RespuestaTransferencia(BaseModel):
     respuesta: str = Field(min_length=5, max_length=3000)
 
@@ -172,6 +182,22 @@ class Calibracion(BaseModel):
     provisional: bool
 
 
+class FactorEntorno(BaseModel):
+    id: Literal["luz", "contraluz", "ruido"]
+    nivel: Literal["ok", "aviso", "alto"]
+    titulo: str
+    detalle: str
+    sugerencia: str | None
+
+
+class EntornoPublico(BaseModel):
+    medido: EntornoMedido
+    factores: list[FactorEntorno]
+    # True solo si el resultado fue bajo Y había condiciones adversas (posible, no causa)
+    posible_influencia: bool
+    nota: str
+
+
 class SesionPublica(BaseModel):
     session_id: str
     phase: Fase
@@ -187,6 +213,7 @@ class SesionPublica(BaseModel):
     transfer: Transferencia | None
     scores: Scores
     calibration: Calibracion | None
+    entorno: EntornoPublico | None
     tasks: dict[str, InfoTarea]
     gemma: dict[str, str]
     disclaimer: str

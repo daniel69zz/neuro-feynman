@@ -9,7 +9,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
-from . import config, gemma, prompts, schemas, scoring, simulado
+from . import config, entorno, gemma, prompts, schemas, scoring, simulado
 
 MAX_INTENTOS_TRANSFERENCIA = 2
 PALABRAS_MIN_DEMOSTRADO = 5
@@ -53,6 +53,7 @@ class Sesion:
     puntos_esperados: list[dict] = field(default_factory=list)
     intentos_transferencia: list[dict] = field(default_factory=list)
     respuesta_pendiente: str | None = None
+    entorno: schemas.EntornoMedido | None = None
     tareas: dict[str, Tarea] = field(
         default_factory=lambda: {"extraccion": Tarea(), "analisis": Tarea(), "transferencia": Tarea()}
     )
@@ -361,6 +362,10 @@ def reintentar(s: Sesion, tarea: str) -> None:
         raise ErrorSesion("Tarea desconocida.", 404)
 
 
+def registrar_entorno(s: Sesion, e: schemas.EntornoMedido) -> None:
+    s.entorno = e
+
+
 # ---------- Vista pública ----------
 
 
@@ -408,6 +413,7 @@ def publica(s: Sesion) -> schemas.SesionPublica:
         transfer=transfer,
         scores=schemas.Scores(**scores),
         calibration=schemas.Calibracion(**calib) if calib else None,
+        entorno=entorno.evaluar(s.entorno, scores) if s.entorno else None,
         tasks={
             n: schemas.InfoTarea(
                 estado=t.estado,

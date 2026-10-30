@@ -10,7 +10,7 @@ export interface FotoRevisada {
 }
 
 /** Contenedor modal: entra con escala 0.97 + opacidad, centrado (los modales no tienen disparador de origen). */
-function Modal({ children, onCerrar, etiqueta }: { children: ReactNode; onCerrar: () => void; etiqueta: string }) {
+export function Modal({ children, onCerrar, etiqueta }: { children: ReactNode; onCerrar: () => void; etiqueta: string }) {
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => e.key === "Escape" && onCerrar();
     window.addEventListener("keydown", tecla);
