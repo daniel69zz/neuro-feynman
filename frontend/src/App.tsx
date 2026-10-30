@@ -36,7 +36,10 @@ export default function App() {
   }, []);
 
   // cada pantalla empieza arriba (sin desplazamiento animado: es un cambio de contexto, no una navegación interna)
-  useEffect(() => window.scrollTo({ top: 0 }), [pantalla]);
+  useEffect(() => {
+    // con llaves: en Chrome reciente scrollTo devuelve una Promise y React la tomaría como limpieza
+    window.scrollTo({ top: 0 });
+  }, [pantalla]);
 
   // mientras Gemma trabaja, se consulta el estado de la sesión
   const hayPendiente = sesion ? Object.values(sesion.tasks).some((t) => t.estado === "pending") : false;

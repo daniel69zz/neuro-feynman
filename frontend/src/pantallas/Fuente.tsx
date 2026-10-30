@@ -20,6 +20,7 @@ interface Props {
 
 export function Fuente({ sesion, ocupado, onReintentar, onConfirmar }: Props) {
   const tarea = sesion.tasks.extraccion;
+  const leyendo = tarea.estado === "pending" || tarea.estado === "idle";
   const [topic, setTopic] = useState("");
   const [conceptos, setConceptos] = useState<ConceptoEditable[]>([]);
 
@@ -71,7 +72,7 @@ export function Fuente({ sesion, ocupado, onReintentar, onConfirmar }: Props) {
           </p>
         </div>
 
-        {tarea.estado === "pending" && (
+        {leyendo && (
           <EsperandoGemma texto="Gemma 4 está leyendo tu apunte…" />
         )}
 
@@ -82,7 +83,7 @@ export function Fuente({ sesion, ocupado, onReintentar, onConfirmar }: Props) {
           </>
         )}
 
-        {tarea.estado !== "pending" && (
+        {!leyendo && (
           <>
             {sesion.source_quality === "needs_review" && (
               <Aviso>

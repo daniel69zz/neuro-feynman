@@ -114,21 +114,21 @@ def calibracion(scores: dict, conceptos: list[dict], confianza: int | None) -> d
         label = "posible_sobreestimacion"
         titulo = "Posible sobreestimación"
         explicacion = (
-            f"Tu confianza ({confianza} %) superó en {brecha:g} puntos lo que demostraste en esta sesión. "
+            f"Tu confianza ({confianza} %) superó en {round(brecha)} puntos lo que demostraste en esta sesión. "
             "Reconocer un tema en tus apuntes no es lo mismo que poder explicarlo y aplicarlo sin mirarlos."
         )
     elif brecha <= -UMBRAL_BRECHA:
         label = "posible_subestimacion"
         titulo = "Posible subestimación"
         explicacion = (
-            f"Demostraste {abs(brecha):g} puntos más de lo que esperabas. "
+            f"Demostraste {round(abs(brecha))} puntos más de lo que esperabas. "
             "Puede que sepas más de lo que crees: confía un poco más en tu recuperación."
         )
     else:
         label = "alineado"
         titulo = "Confianza y desempeño alineados"
         explicacion = (
-            f"La diferencia es de {brecha:+g} puntos: tu percepción coincide razonablemente con lo que demostraste."
+            f"La diferencia es de {round(brecha):+d} puntos: tu percepción coincide razonablemente con lo que demostraste."
         )
 
     if foco:

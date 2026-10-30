@@ -76,15 +76,16 @@ def obtener(sid: str) -> Sesion:
     return s
 
 
-def _lanzar(coro) -> None:
-    t = asyncio.create_task(coro)
+def _lanzar(s: Sesion, nombre: str, llamada_real, llamada_simulada, aplicar) -> None:
+    # se marca "pending" antes de responder, para que el frontend empiece a consultar el estado
+    s.tareas[nombre] = Tarea(estado="pending", simulado=config.MODO == "demo")
+    t = asyncio.create_task(_ejecutar(s, nombre, llamada_real, llamada_simulada, aplicar))
     _en_curso.add(t)
     t.add_done_callback(_en_curso.discard)
 
 
 async def _ejecutar(s: Sesion, nombre: str, llamada_real, llamada_simulada, aplicar) -> None:
-    tarea = Tarea(estado="pending", simulado=config.MODO == "demo")
-    s.tareas[nombre] = tarea
+    tarea = s.tareas[nombre]
     try:
         if config.MODO == "demo":
             inicio = time.monotonic()
@@ -138,13 +139,11 @@ def lanzar_extraccion(s: Sesion) -> None:
             s.quality_note = "No se detectaron conceptos en la imagen."
 
     _lanzar(
-        _ejecutar(
-            s,
-            "extraccion",
-            lambda: gemma.consultar(prompts.extraccion(), schemas.ExtraccionIA, s.imagen),
-            simulado.extraccion,
-            aplicar,
-        )
+        s,
+        "extraccion",
+        lambda: gemma.consultar(prompts.extraccion(), schemas.ExtraccionIA, s.imagen),
+        simulado.extraccion,
+        aplicar,
     )
 
 
@@ -241,15 +240,13 @@ def lanzar_analisis(s: Sesion) -> None:
         s.incertidumbre = d.uncertainty or None
 
     _lanzar(
-        _ejecutar(
-            s,
-            "analisis",
-            lambda: gemma.consultar(
-                prompts.analisis(s.topic or "", s.conceptos, s.explicacion or ""), schemas.AnalisisIA
-            ),
-            lambda: simulado.analisis(s.conceptos, s.explicacion or ""),
-            aplicar,
-        )
+        s,
+        "analisis",
+        lambda: gemma.consultar(
+            prompts.analisis(s.topic or "", s.conceptos, s.explicacion or ""), schemas.AnalisisIA
+        ),
+        lambda: simulado.analisis(s.conceptos, s.explicacion or ""),
+        aplicar,
     )
 
 
@@ -342,16 +339,14 @@ def lanzar_transferencia(s: Sesion) -> None:
         s.respuesta_pendiente = None
 
     _lanzar(
-        _ejecutar(
-            s,
-            "transferencia",
-            lambda: gemma.consultar(
-                prompts.transferencia(s.topic or "", s.conceptos, s.pregunta or "", s.puntos_esperados, respuesta),
-                schemas.TransferenciaIA,
-            ),
-            lambda: simulado.transferencia(respuesta),
-            aplicar,
-        )
+        s,
+        "transferencia",
+        lambda: gemma.consultar(
+            prompts.transferencia(s.topic or "", s.conceptos, s.pregunta or "", s.puntos_esperados, respuesta),
+            schemas.TransferenciaIA,
+        ),
+        lambda: simulado.transferencia(respuesta),
+        aplicar,
     )
 
 
