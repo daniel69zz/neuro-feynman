@@ -72,6 +72,9 @@ export function Explicacion({ sesion, sugerida, ocupado, onEnviar }: {
         </div>
       </div>
       {dictado.error && <p className="text-sm text-rojo">{dictado.error}</p>}
+      {!dictado.disponible && (
+        <p className="text-xs text-tenue">Este navegador no tiene dictado por voz (Firefox no lo soporta). Usa Chrome, Edge o Safari, o escribe.</p>
+      )}
       {dictado.escuchando && (
         <p className="text-xs text-tenue">El dictado lo transcribe tu navegador; Gemma solo recibe el texto final, que puedes corregir.</p>
       )}
