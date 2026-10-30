@@ -85,6 +85,20 @@ body {
   transition: transform 900ms var(--ease-out-fuerte);
 }
 
+/* Modal de cámara/revisión: centrado (sin disparador de origen), escala 0.97 + opacidad, 220 ms */
+.modal-fondo {
+  animation: aparecer 200ms ease both;
+}
+.modal {
+  animation: modal-entrar 220ms var(--ease-out-fuerte) both;
+}
+@keyframes modal-entrar {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 /* "Gemma trabajando": un punto que late, sin spinner */
 .latido {
   animation: latido 1.1s ease-in-out infinite;
@@ -145,7 +159,8 @@ body {
 /* Movimiento reducido: se conservan los fundidos, se quita el desplazamiento */
 @media (prefers-reduced-motion: reduce) {
   .entrar,
-  .cascada > * {
+  .cascada > *,
+  .modal {
     animation-name: aparecer;
   }
   .latido,

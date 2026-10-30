@@ -1,7 +1,9 @@
 // Orquesta el recorrido: apunte → confianza → explicación → brechas → aplicación → resultado
 import { useEffect, useState } from "react";
 import { api, repaso, type ConceptoEditable, type NombreTarea, type RepasoPendiente, type Salud, type Sesion } from "./api";
+import { analizarArchivo } from "./calidad";
 import { Brechas } from "./pantallas/Brechas";
+import { Camara, RevisionFoto, type FotoRevisada } from "./pantallas/Camara";
 import { Confianza } from "./pantallas/Confianza";
 import { Explicacion } from "./pantallas/Explicacion";
 import { Fuente } from "./pantallas/Fuente";
@@ -30,6 +32,8 @@ export default function App() {
   const [pendiente, setPendiente] = useState<RepasoPendiente | null>(() => repaso.leer());
   const [previo, setPrevio] = useState<RepasoPendiente | null>(null);
   const [repasoGuardado, setRepasoGuardado] = useState(false);
+  const [camara, setCamara] = useState(false);
+  const [revision, setRevision] = useState<(FotoRevisada & { origen: "camara" | "archivo" }) | null>(null);
 
   useEffect(() => {
     api.salud().then(setSalud).catch((e: Error) => setError(e.message));
@@ -62,6 +66,29 @@ export default function App() {
     } finally {
       setOcupado(false);
     }
+  }
+
+  // control de calidad local antes de gastar una llamada a Gemma
+  async function revisarArchivo(archivo: File) {
+    try {
+      const informe = await analizarArchivo(archivo);
+      if (informe.problemas.length === 0) return enviarFoto(archivo);
+      setRevision({ archivo, url: URL.createObjectURL(archivo), informe, origen: "archivo" });
+    } catch {
+      // formato que el navegador no decodifica (p. ej. HEIC): lo valida el backend
+      enviarFoto(archivo);
+    }
+  }
+
+  function cerrarRevision() {
+    if (revision) URL.revokeObjectURL(revision.url);
+    setRevision(null);
+  }
+
+  function enviarFoto(archivo: File) {
+    cerrarRevision();
+    setCamara(false);
+    ejecutar(() => api.crearConImagen(archivo), "fuente");
   }
 
   function reiniciar() {
@@ -122,7 +149,8 @@ export default function App() {
             salud={salud}
             repasoPendiente={pendiente}
             ocupado={ocupado}
-            onArchivo={(f) => ejecutar(() => api.crearConImagen(f), "fuente")}
+            onArchivo={revisarArchivo}
+            onCamara={() => setCamara(true)}
             onEjemplo={(e) => ejecutar(() => api.crearConEjemplo(e), "fuente")}
             onRepaso={empezarRepaso}
           />
@@ -180,6 +208,22 @@ export default function App() {
         )}
       </main>
       <Pie salud={salud} />
+
+      {camara && !revision && (
+        <Camara onCerrar={() => setCamara(false)} onFoto={(f) => setRevision({ ...f, origen: "camara" })} />
+      )}
+      {revision && (
+        <RevisionFoto
+          foto={revision}
+          textoOtra={revision.origen === "camara" ? "Repetir foto" : "Elegir otra"}
+          onUsar={() => enviarFoto(revision.archivo)}
+          onOtra={cerrarRevision}
+          onCerrar={() => {
+            cerrarRevision();
+            setCamara(false);
+          }}
+        />
+      )}
     </div>
   );
 }

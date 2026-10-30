@@ -8,11 +8,12 @@ interface Props {
   repasoPendiente: RepasoPendiente | null;
   ocupado: boolean;
   onArchivo: (f: File) => void;
+  onCamara: () => void;
   onEjemplo: (id: string) => void;
   onRepaso: () => void;
 }
 
-export function Inicio({ salud, repasoPendiente, ocupado, onArchivo, onEjemplo, onRepaso }: Props) {
+export function Inicio({ salud, repasoPendiente, ocupado, onArchivo, onCamara, onEjemplo, onRepaso }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [arrastrando, setArrastrando] = useState(false);
   const ejemplo = salud?.ejemplos[0];
@@ -88,11 +89,14 @@ export function Inicio({ salud, repasoPendiente, ocupado, onArchivo, onEjemplo, 
           <span className="text-lg font-bold">Sube una foto de tu apunte</span>
           <span className="text-sm text-tenue">Cuaderno, pizarra o diapositiva · un solo tema · JPG, PNG o WEBP</span>
         </button>
+        <Boton variante="secundario" onClick={onCamara} disabled={ocupado} className="self-center">
+          <span className="size-2 rounded-full bg-rojo" aria-hidden />
+          O tómala con la cámara (revisa luz y nitidez en vivo)
+        </Boton>
         <input
           ref={input}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
