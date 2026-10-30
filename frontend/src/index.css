@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+/* Tema cálido de papel y tinta (misma familia que Predictia) + tres colores semánticos del mapa de brechas */
+@theme {
+  --color-fondo: #fbf3e4;
+  --color-papel: #fffaf1;
+  --color-borde: #ecdcc0;
+  --color-tinta: #2e1b0c;
+  --color-suave: #6e4527;
+  --color-tenue: #9a7352;
+  --color-terracota: #c8553d;
+  --color-terracota-oscuro: #a8432e;
+  --color-ocre: #d9a441;
+  --color-gemma: #7b4dff;
+
+  /* Mapa de brechas: verde = demostrado, ámbar = por verificar, rojo = omitido o incorrecto */
+  --color-verde: #0e8c7a;
+  --color-verde-fondo: #e3f4ef;
+  --color-ambar: #a86b00;
+  --color-ambar-fondo: #fdf0d2;
+  --color-rojo: #b4372f;
+  --color-rojo-fondo: #fbe5e1;
+
+  --font-sans: ui-rounded, "SF Pro Rounded", "Nunito", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mano: "Bradley Hand", "Segoe Print", "Comic Neue", cursive;
+
+  --ease-out-fuerte: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-fuerte: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+body {
+  @apply bg-fondo text-tinta antialiased;
+  background-image: radial-gradient(60rem 30rem at 0% -10%, rgb(255 196 0 / 0.14), transparent 60%),
+    radial-gradient(50rem 30rem at 100% 0%, rgb(14 140 122 / 0.06), transparent 60%);
+  min-height: 100vh;
+}
+
+/* Renglones de cuaderno para las áreas donde el estudiante escribe */
+.renglones {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 31px,
+    rgb(178 204 228 / 0.55) 31px 32px
+  );
+  background-attachment: local;
+  line-height: 32px;
+}
+
+/* Todo lo que se presiona responde al instante (160 ms, ease-out fuerte) */
+.presionable {
+  transition:
+    transform 160ms var(--ease-out-fuerte),
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+.presionable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Cambio de pantalla (una vez por paso): poco desplazamiento, rápido */
+.entrar {
+  animation: entrar 280ms var(--ease-out-fuerte) both;
+}
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Tarjetas del mapa de brechas: aparecen en cascada solo la primera vez que se ve el mapa */
+.cascada > * {
+  animation: entrar 300ms var(--ease-out-fuerte) both;
+}
+.cascada > *:nth-child(2) { animation-delay: 45ms; }
+.cascada > *:nth-child(3) { animation-delay: 90ms; }
+.cascada > *:nth-child(4) { animation-delay: 135ms; }
+.cascada > *:nth-child(5) { animation-delay: 180ms; }
+.cascada > *:nth-child(n + 6) { animation-delay: 220ms; }
+
+/* Barras de resultado: explican la diferencia, por eso se permiten algo más lentas (dato que se revela una vez) */
+.barra {
+  transform-origin: left center;
+  transition: transform 900ms var(--ease-out-fuerte);
+}
+
+/* "Gemma trabajando": un punto que late, sin spinner */
+.latido {
+  animation: latido 1.1s ease-in-out infinite;
+}
+@keyframes latido {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+/* Barra indeterminada de espera: movimiento constante → lineal */
+.progreso-indeterminado {
+  animation: barrido 1.4s linear infinite;
+}
+@keyframes barrido {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Slider de confianza */
+.slider {
+  appearance: none;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-terracota) var(--valor), var(--color-borde) var(--valor));
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--color-papel);
+  border: 3px solid var(--color-terracota);
+  box-shadow: 0 2px 8px rgb(46 27 12 / 0.18);
+  transition: transform 160ms var(--ease-out-fuerte);
+}
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.slider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--color-papel);
+  border: 3px solid var(--color-terracota);
+}
+.slider:focus-visible {
+  outline: 3px solid var(--color-verde);
+  outline-offset: 6px;
+}
+
+/* Movimiento reducido: se conservan los fundidos, se quita el desplazamiento */
+@media (prefers-reduced-motion: reduce) {
+  .entrar,
+  .cascada > * {
+    animation-name: aparecer;
+  }
+  .latido,
+  .progreso-indeterminado {
+    animation: none;
+  }
+  .presionable:active:not(:disabled),
+  .slider:active::-webkit-slider-thumb {
+    transform: none;
+  }
+  .barra {
+    transition: none;
+  }
+}
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
